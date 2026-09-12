@@ -1,66 +1,178 @@
 # Learning EEG Representations for Sleep Deprivation Classification and Sleepiness Prediction
 
-This repository contains our course project on using resting-state EEG for two related tasks:
+Deep learning project for learning representations from resting-state EEG and testing whether those representations transfer from **sleep deprivation classification** to downstream **subjective sleepiness prediction**.
 
-1. **Sleep deprivation classification**: classify EEG epochs as **normal sleep (NS)** vs. **sleep deprivation (SD)**
-2. **Sleepiness prediction**: predict session-level **Stanford Sleepiness Scale (SSS)** and **Karolinska Sleepiness Scale (KSS)** scores
+The project studies two related questions:
 
-The core goal is to study whether EEG representations learned for sleep deprivation classification are also useful for downstream subjective sleepiness prediction.
+1. Can EEG epochs reliably distinguish **normal sleep (NS)** from **sleep deprivation (SD)**?
+2. Can representations learned for that classification task support prediction of session-level **Stanford Sleepiness Scale (SSS)** and **Karolinska Sleepiness Scale (KSS)** scores?
 
-Link to Drive Folder containing raw data and preprocessed data: 
-https://drive.google.com/drive/folders/1meAulHb0yytaVB1TZRkgO1hG_Lgp4cI_?usp=sharing
+## Highlights
 
-## What this repo includes
+- Built an end-to-end EEG preprocessing, training, and evaluation workflow over **8,300 EEG samples**.
+- Used **subject-wise train/validation/test splits** to prevent identity leakage across experimental partitions.
+- Evaluated **Residual EEG CNN**, **2-Branch EEG CNN**, **DeiT-Tiny**, and **ViT-Small** architectures for NS vs. SD classification.
+- Reused learned EEG representations for downstream sleepiness prediction with **Ridge, MLP, GRU, and LSTM** models.
+- Compared feature-based transfer, direct ordinal prediction, and multi-task learning approaches.
+- Implemented experiments in PyTorch with MNE, scikit-learn, timm, NumPy, Pandas, and SciPy.
 
-- EEG preprocessing pipeline
-- Phase 1 training and evaluation pipeline
-- Phase 2 pipelines for sleepiness prediction:
-  - **Phase 1 feature-based models** using pretrained representations
-  - **Direct end-to-end ordinal prediction** from EEG
-  - **Multi-task learning** for joint classification and sleepiness prediction
+## Experimental Design
 
-## Main approach
+A central methodological constraint in EEG modeling is avoiding subject leakage. Randomly splitting epochs can place recordings from the same individual in both training and evaluation data, producing overly optimistic performance estimates.
 
-### Phase 1: NS vs. SD classification
+This project therefore uses **subject-wise splitting** so that subjects in the training set do not appear in validation or test data.
 
-We train deep models on preprocessed EEG epochs and compare:
+The stored classification split contains:
 
-- Residual EEG CNN
-- 2-Branch EEG CNN
-- DeiT-Tiny
-- ViT-Small
+| Split | EEG samples | Subjects |
+| --- | ---: | ---: |
+| Train | 5,738 | 49 |
+| Validation | 1,246 | held-out subjects |
+| Test | 1,316 | held-out subjects |
+| **Total** | **8,300** | **subject-disjoint across splits** |
 
-The **Residual EEG CNN** is then used as the main encoder for downstream experiments.
+This split is reused across the downstream experiments where applicable so that evaluation remains consistent with the original representation-learning setup.
 
-### Phase 2: Sleepiness prediction
+## Phase 1: Sleep Deprivation Classification
 
-We evaluate three settings:
+The first stage learns EEG representations by classifying each epoch as:
 
-- **Phase 1 feature-based prediction**  
-  Extract epoch-level features from the trained Residual EEG CNN and train session-level models such as Ridge, MLP, GRU, and LSTM.
+- **NS**: normal sleep condition
+- **SD**: sleep-deprived condition
 
-- **Direct ordinal prediction**  
-  Train EEG models directly on SSS or KSS using ordinal supervision.
+### Models compared
 
-- **Multi-task learning**  
-  Jointly learn NS vs. SD classification and sleepiness prediction using a shared encoder.
+- **Residual EEG CNN**
+- **2-Branch EEG CNN**
+- **DeiT-Tiny**
+- **ViT-Small**
 
-## Notes
+The **Residual EEG CNN** is used as the primary encoder for downstream representation-transfer experiments.
 
-- The project uses subject-wise splitting to avoid leakage across train, validation, and test sets.
-- Experiments are provided as notebooks under code/.
+Conceptually, Phase 1 is:
+
+```text
+Resting-state EEG
+      |
+      v
+Preprocessing
+      |
+      v
+EEG representation learner
+      |
+      +----> NS vs. SD classifier
+      |
+      +----> learned embedding for Phase 2
+```
+
+## Phase 2: Sleepiness Prediction
+
+The second stage asks whether representations learned from the NS vs. SD task capture information useful for predicting subjective sleepiness.
+
+Two session-level targets are studied:
+
+- **SSS**: Stanford Sleepiness Scale
+- **KSS**: Karolinska Sleepiness Scale
+
+Three modeling strategies are explored.
+
+### 1. Feature-based transfer
+
+Extract representations from the pretrained Residual EEG CNN and use them as inputs to downstream models including:
+
+- Ridge regression
+- MLP
+- GRU
+- LSTM
+
+This tests whether the Phase 1 encoder learns reusable EEG features without requiring the entire network to be retrained for sleepiness prediction.
+
+### 2. Direct ordinal prediction
+
+Train EEG models directly against SSS or KSS targets using ordinal supervision.
+
+This provides an end-to-end alternative to the representation-transfer pipeline.
+
+### 3. Multi-task learning
+
+Train a shared EEG encoder jointly for:
+
+- NS vs. SD classification
+- sleepiness prediction
+
+The goal is to study whether the classification task provides useful auxiliary supervision for subjective sleepiness estimation.
+
+## Repository Structure
+
+```text
+.
+├── code/
+│   ├── sleep_deprivation_classification/
+│   │   ├── classification experiments
+│   │   └── subject-wise split artifacts
+│   └── sleepiness_score_prediction/
+│       ├── feature-based SSS/KSS prediction
+│       ├── direct prediction experiments
+│       └── multi-task SSS/KSS experiments
+├── requirements.txt
+└── README.md
+```
+
+The experiments are primarily provided as notebooks under `code/`.
+
+## Tech Stack
+
+**Deep Learning**
+
+- PyTorch
+- torchvision
+- timm
+
+**EEG and Scientific Computing**
+
+- MNE
+- NumPy
+- Pandas
+- SciPy
+- scikit-learn
+
+**Model families**
+
+- Residual CNNs
+- Multi-branch CNNs
+- Vision Transformers
+- GRU / LSTM sequence models
+- MLP and linear baselines
+
+## Data
+
+Raw and preprocessed project data are stored separately from the repository:
+
+[Project data folder](https://drive.google.com/drive/folders/1meAulHb0yytaVB1TZRkgO1hG_Lgp4cI_?usp=sharing)
+
+The repository contains the modeling code and experimental notebooks rather than duplicating the full EEG dataset in Git.
 
 ## Setup
 
-Install dependencies with:
+Clone the repository and install the pinned dependencies:
 
 ```bash
+git clone https://github.com/chinmayarvind23/eeg-sleep-deprivation-classification-and-sleepiness-prediction.git
+cd eeg-sleep-deprivation-classification-and-sleepiness-prediction
 pip install -r requirements.txt
 ```
 
-## Team Members
+The main experiments can then be opened from the notebooks under `code/`.
+
+## Why This Project Matters
+
+EEG models can easily appear stronger than they are when evaluation allows information from the same participant to leak across splits. This project treats **subject-independent evaluation** as a first-class constraint and then asks a harder transfer-learning question: whether representations learned from an objective condition label, sleep deprivation, contain useful information for a related subjective outcome, perceived sleepiness.
+
+That makes the project both a classification benchmark and a representation-learning study across related physiological prediction tasks.
+
+## Team
 
 - Rushendra Sidibomma
-- Chinmay Arvind
+- **Chinmay Arvind**
 - Samarth Kumar Samal
 - Arno Benzigar
