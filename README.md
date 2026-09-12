@@ -9,11 +9,11 @@ The project studies two related questions:
 
 ## Highlights
 
-- Built an end-to-end EEG preprocessing, training, and evaluation workflow over **8,300 EEG samples**.
-- Used **subject-wise train/validation/test splits** to prevent identity leakage across experimental partitions.
+- Transferred learned EEG representations to downstream sleepiness prediction on held-out subjects, reaching **0.692 Pearson** and **0.738 Spearman correlation** for KSS prediction using leakage-safe subject-wise evaluation.
+- Built subject-independent EEG models across **8,300 epochs** with disjoint train/validation/test participants, avoiding identity leakage that can otherwise overstate biomedical model performance.
+- Compared representation transfer, direct ordinal prediction, and multi-task learning across CNN, GRU/LSTM, and transformer-based models to evaluate which training strategy best supports real-world sleepiness estimation.
 - Evaluated **Residual EEG CNN**, **2-Branch EEG CNN**, **DeiT-Tiny**, and **ViT-Small** architectures for NS vs. SD classification.
 - Reused learned EEG representations for downstream sleepiness prediction with **Ridge, MLP, GRU, and LSTM** models.
-- Compared feature-based transfer, direct ordinal prediction, and multi-task learning approaches.
 - Implemented experiments in PyTorch with MNE, scikit-learn, timm, NumPy, Pandas, and SciPy.
 
 ## Experimental Design
